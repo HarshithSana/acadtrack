@@ -143,15 +143,20 @@
 
 <script>
 const gc = '#1e2d45', tc = '#475569';
+
 Chart.defaults.color = tc;
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 10;
 
-const grades  = {{ grades | map(attribute='grade')        | list | tojson }};
-const marks   = {{ grades | map(attribute='marks')        | list | tojson }};
-const subjects= {{ grades | map(attribute='subject_name') | list | tojson }};
+/* Pass Flask data as JSON */
+const semesterData = {{ grades | tojson | safe }};
 
-// Marks bar chart
+/* Extract values */
+const subjects = semesterData.map(s => s.subject_name);
+const marks = semesterData.map(s => s.marks);
+const gradeList = semesterData.map(s => s.grade);
+
+/* Marks Chart */
 new Chart(document.getElementById('marksChart').getContext('2d'), {
   type: 'bar',
   data: {
@@ -164,13 +169,17 @@ new Chart(document.getElementById('marksChart').getContext('2d'), {
         m >= 50 ? 'rgba(251,191,36,0.45)' : 'rgba(251,113,133,0.45)'
       ),
       borderColor: marks.map(m =>
-        m >= 85 ? '#34d399' : m >= 65 ? '#22d3ee' : m >= 50 ? '#fbbf24' : '#fb7185'
+        m >= 85 ? '#34d399' :
+        m >= 65 ? '#22d3ee' :
+        m >= 50 ? '#fbbf24' : '#fb7185'
       ),
-      borderWidth: 1, borderRadius: 3
+      borderWidth: 1,
+      borderRadius: 3
     }]
   },
   options: {
-    responsive: true, maintainAspectRatio: false,
+    responsive: true,
+    maintainAspectRatio: false,
     scales: {
       y: { min: 0, max: 100, grid: { color: gc } },
       x: { grid: { display: false }, ticks: { maxRotation: 50, font: { size: 9 } } }
@@ -179,24 +188,43 @@ new Chart(document.getElementById('marksChart').getContext('2d'), {
   }
 });
 
-// Grade doughnut
+/* Grade Distribution */
 const gradeCounts = {};
-grades.forEach(g => gradeCounts[g] = (gradeCounts[g]||0) + 1);
-const gradeColors = { S:'#34d399',A:'#22d3ee',B:'#818cf8',C:'#fbbf24',D:'#fb923c',F:'#fb7185' };
+gradeList.forEach(g => gradeCounts[g] = (gradeCounts[g] || 0) + 1);
+
+const gradeColors = {
+  S:'#34d399',
+  A:'#22d3ee',
+  B:'#818cf8',
+  C:'#fbbf24',
+  D:'#fb923c',
+  F:'#fb7185'
+};
+
 new Chart(document.getElementById('gradeChart').getContext('2d'), {
   type: 'doughnut',
   data: {
     labels: Object.keys(gradeCounts),
     datasets: [{
       data: Object.values(gradeCounts),
-      backgroundColor: Object.keys(gradeCounts).map(g => (gradeColors[g]||'#475569') + '99'),
-      borderColor:     Object.keys(gradeCounts).map(g => gradeColors[g]||'#475569'),
+      backgroundColor: Object.keys(gradeCounts).map(
+        g => (gradeColors[g] || '#475569') + '99'
+      ),
+      borderColor: Object.keys(gradeCounts).map(
+        g => gradeColors[g] || '#475569'
+      ),
       borderWidth: 1
     }]
   },
   options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'right', labels: { color: tc, padding: 12, font: { size: 11 } } } }
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { color: tc, padding: 12, font: { size: 11 } }
+      }
+    }
   }
 });
 </script>
