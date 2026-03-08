@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grades — AcadTrack Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="admin-wrap">
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
+    <div class="sidebar-sub">ADMIN PORTAL</div>
+    <nav>
+      <div class="sidebar-section">Navigation</div>
+      <a href="{{ url_for('admin_panel') }}" class="sidebar-link">▪ Overview</a>
+      <a href="{{ url_for('manage_students') }}" class="sidebar-link">▪ Students</a>
+      <a href="{{ url_for('manage_grades') }}" class="sidebar-link active">▪ Grades</a>
+      <a href="{{ url_for('admin_rankings') }}" class="sidebar-link">▪ Rankings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
+      <div>
+        <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">Grades</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">{{ grades|length }} records</div>
+      </div>
+      <button onclick="document.getElementById('addModal').classList.add('open')" class="btn btn-primary">+ Add Grade</button>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <!-- FILTER BAR -->
+    <div class="card fade-up fade-up-1" style="margin-bottom:1rem;">
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <input type="text" id="search" placeholder="Search student / subject..." oninput="filterTable()" style="flex:1;min-width:160px;">
+        <select id="semFilter" onchange="filterTable()" style="width:160px;">
+          <option value="">All Semesters</option>
+          {% for sem in semesters %}
+          <option value="{{ sem.semester_number }}">Semester {{ sem.semester_number }}</option>
+          {% endfor %}
+        </select>
+        <select id="gradeFilter" onchange="filterTable()" style="width:130px;">
+          <option value="">All Grades</option>
+          {% for gp in grade_points %}
+          <option value="{{ gp.grade }}">{{ gp.grade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="card fade-up fade-up-2">
+      <div class="card-head">Grade Records</div>
+      <div class="table-wrap">
+        <table id="gradeTable">
+          <thead>
+            <tr><th>Roll No</th><th>Name</th><th>Semester</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            {% for g in grades %}
+            <tr>
+              <td style="color:var(--cyan);font-weight:600;">{{ g.student_id }}</td>
+              <td>{{ g.name }}</td>
+              <td>{{ g.semester_number }}</td>
+              <td>{{ g.subject_name }}</td>
+              <td>{{ g.marks }}</td>
+              <td><span class="badge badge-{{ g.grade[0] }}">{{ g.grade }}</span></td>
+              <td>
+                <a href="{{ url_for('delete_grade', gid=g.grade_id) }}"
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete this grade?')">Delete</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem;">No records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD GRADE MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title">Add Grade Entry</div>
+    <form method="POST" action="{{ url_for('add_grade') }}">
+      <div class="form-group"><label>Student</label>
+        <select name="student_id" required>
+          <option value="">Select Student</option>
+          {% for s in students %}
+          <option value="{{ s.student_id }}">{{ s.student_id }} — {{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>Subject</label>
+        <select name="subject_id" required>
+          <option value="">Select Subject</option>
+          {% for sub in subjects %}
+          <option value="{{ sub.subject_id }}">{{ sub.subject_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>Semester</label>
+        <select name="semester_id" required>
+          <option value="">Select Semester</option>
+          {% for sem in semesters %}
+          <option value="{{ sem.semester_id }}">Semester {{ sem.semester_number }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>Marks (0–100)</label>
+        <input type="number" name="marks" min="0" max="100" required></div>
+      <div class="form-group"><label>Grade</label>
+        <select name="grade" required>
+          <option value="">Select Grade</option>
+          {% for gp in grade_points %}
+          <option value="{{ gp.grade }}">{{ gp.grade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="document.getElementById('addModal').classList.remove('open')" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('addModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+function filterTable() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const sf = document.getElementById('semFilter').value;
+  const gf = document.getElementById('gradeFilter').value;
+  document.querySelectorAll('#gradeTable tbody tr').forEach(r => {
+    const cells = r.querySelectorAll('td');
+    const matchQ  = !q  || r.innerText.toLowerCase().includes(q);
+    const matchS  = !sf || (cells[2] && cells[2].innerText.trim() === sf);
+    const matchG  = !gf || (cells[5] && cells[5].innerText.trim() === gf);
+    r.style.display = matchQ && matchS && matchG ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

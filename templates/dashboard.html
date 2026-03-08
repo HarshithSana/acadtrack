@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — AcadTrack</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="nav-brand" href="{{ url_for('dashboard') }}">Acad<span>Track</span></a>
+  <div class="nav-center">Academic Performance Dashboard</div>
+  <div class="nav-right">
+    <div class="nav-pill">
+      <strong>{{ student_id }}</strong> &nbsp;·&nbsp; {{ department }}
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-nav">Logout</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- PROFILE -->
+  <div class="profile-card fade-up">
+    <div class="avatar">{{ student_name[0] }}</div>
+    <div class="profile-info">
+      <h2>{{ student_name }}</h2>
+      <div style="font-size:0.72rem;color:var(--text3);">{{ email }}</div>
+      <div class="profile-meta">
+        <span class="meta-tag highlight">{{ student_id }}</span>
+        <span class="meta-tag">{{ department }}</span>
+        <span class="meta-tag">{{ semester_data|length }} Semesters</span>
+        <span class="meta-tag">CGPA {{ cgpa }}</span>
+        {% if dept_rank %}
+        <span class="meta-tag">Dept Rank #{{ dept_rank }} / {{ dept_total }}</span>
+        {% endif %}
+        {% if trend %}
+        <span class="trend {{ trend }}">
+          {% if trend == 'improving' %}↑ Improving
+          {% elif trend == 'declining' %}↓ Declining
+          {% else %}→ Stable{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- FLASH -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  <!-- STAT CARDS -->
+  <div class="stats-row">
+    <div class="stat fade-up fade-up-1">
+      <div class="stat-accent cyan"></div>
+      <div class="stat-label">CGPA</div>
+      <div class="stat-val cyan">{{ cgpa }}</div>
+      <div class="stat-sub">Overall average</div>
+    </div>
+    <div class="stat fade-up fade-up-2">
+      <div class="stat-accent indigo"></div>
+      <div class="stat-label">Dept Rank</div>
+      <div class="stat-val indigo">{% if dept_rank %}#{{ dept_rank }}{% else %}—{% endif %}</div>
+      <div class="stat-sub">of {{ dept_total }} students</div>
+    </div>
+    <div class="stat fade-up fade-up-3">
+      <div class="stat-accent {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}"></div>
+      <div class="stat-label">Backlogs</div>
+      <div class="stat-val {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}">{{ backlogs|length }}</div>
+      <div class="stat-sub">Failed subjects</div>
+    </div>
+    <div class="stat fade-up fade-up-4">
+      <div class="stat-accent amber"></div>
+      <div class="stat-label">Semesters</div>
+      <div class="stat-val amber">{{ semester_data|length }}</div>
+      <div class="stat-sub">Completed</div>
+    </div>
+    <div class="stat fade-up fade-up-5">
+      <div class="stat-accent {% if semester_data %}cyan{% endif %}"></div>
+      <div class="stat-label">Latest SGPA</div>
+      <div class="stat-val cyan">{{ semester_data[-1].sgpa if semester_data else '—' }}</div>
+      <div class="stat-sub">Sem {{ semester_data[-1].semester_number if semester_data else '—' }}</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Charts -->
+  <div class="grid-2 fade-up fade-up-2" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-head">SGPA Trend</div>
+      <div class="chart-box">
+        <canvas id="sgpaChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">Subject Marks</div>
+      <div class="chart-box">
+        <canvas id="marksChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: SGPA bars + Backlogs + Prediction -->
+  <div class="grid-3 fade-up fade-up-3" style="margin-bottom:1.25rem;">
+
+    <!-- SGPA BARS -->
+    <div class="card">
+      <div class="card-head">Semester SGPA</div>
+      <div class="sgpa-bars">
+        {% for s in semester_data %}
+        <div class="sgpa-row">
+          <div class="sgpa-lbl">Sem {{ s.semester_number }}</div>
+          <div class="sgpa-track">
+            <div class="sgpa-fill" style="width:{{ (s.sgpa / 10 * 100)|int }}%"></div>
+          </div>
+          <div class="sgpa-num">{{ s.sgpa }}</div>
+        </div>
+        {% else %}
+        <p style="color:var(--text3);font-size:0.75rem;">No data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- BACKLOGS -->
+    <div class="card">
+      <div class="card-head">Backlogs</div>
+      {% if backlogs %}
+        <div class="backlog-list">
+          {% for b in backlogs %}
+          <div class="backlog-item">
+            {{ b.subject_name }}
+            <span class="backlog-sem">Sem {{ b.semester_number }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="no-backlogs">✓ &nbsp;No backlogs — clean record!</div>
+      {% endif %}
+    </div>
+
+    <!-- ML PREDICTION -->
+    <div class="card">
+      <div class="card-head">Predicted CGPA</div>
+      {% if prediction %}
+        <div class="prediction-card">
+          <div style="font-size:0.68rem;color:var(--text3);">Projected after Sem {{ prediction.next_semester }}</div>
+          <div class="prediction-val">{{ prediction.predicted_cgpa }}</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:0.5rem;">
+            Next SGPA estimate: <strong style="color:var(--indigo);">{{ prediction.predicted_sgpa }}</strong>
+          </div>
+          <div style="font-size:0.68rem;color:var(--text3);">
+            <span class="confidence-dot {{ prediction.confidence }}"></span>
+            {{ prediction.confidence|capitalize }} confidence
+            &nbsp;·&nbsp; Linear Regression
+          </div>
+        </div>
+      {% else %}
+        <div style="padding:1rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:0.75rem;color:var(--text3);">
+          Prediction available after 2+ semesters of data.
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ROW 3: Semester tabs + full grades table -->
+  <div class="card fade-up fade-up-4" style="margin-bottom:1.25rem;">
+    <div class="card-head">
+      Semester Reports
+      <div class="sem-tabs">
+        {% for s in semester_data %}
+        <a href="{{ url_for('semester_report', sem_number=s.semester_number) }}" class="sem-tab">
+          Sem {{ s.semester_number }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL GRADES TABLE -->
+  <div class="card fade-up fade-up-5">
+    <div class="card-head">All Grade Records</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Semester</th>
+            <th>Subject</th>
+            <th>Credits</th>
+            <th>Marks</th>
+            <th>Grade</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in all_grades %}
+          <tr {% if g.grade == 'F' %}style="background:rgba(251,113,133,0.04)"{% endif %}>
+            <td style="color:var(--text3);">Sem {{ g.semester_number }}</td>
+            <td>{{ g.subject_name }}</td>
+            <td style="color:var(--text3);">{{ g.credits }}</td>
+            <td>
+              <div class="marks-cell">
+                {{ g.marks }}
+                <div class="marks-bar">
+                  <div class="marks-fill {% if g.marks >= 85 %}good{% elif g.marks >= 65 %}ok{% elif g.marks >= 50 %}warn{% else %}danger{% endif %}"
+                       style="width:{{ g.marks }}%"></div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ g.grade[0] }}">{{ g.grade }}</span></td>
+            <td style="color:var(--text3);">{{ g.points }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem;">No grades found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+const gc = '#1e2d45', tc = '#475569';
+Chart.defaults.color = tc;
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const sems   = {{ chart_sems   | tojson }};
+const sgpas  = {{ chart_sgpas  | tojson }};
+const subjs  = {{ chart_subjects | tojson }};
+const marks  = {{ chart_marks  | tojson }};
+{% if prediction %}
+const predSgpa = {{ prediction.predicted_sgpa }};
+const predSem  = 'Sem {{ prediction.next_semester }} ★';
+{% endif %}
+
+// SGPA Line Chart (with prediction point if available)
+const sgpaLabels = [...sems{% if prediction %}, predSem{% endif %}];
+const sgpaData   = [...sgpas{% if prediction %}, null{% endif %}];
+const predData   = new Array(sems.length).fill(null);
+{% if prediction %}predData.push(predSgpa);{% endif %}
+
+new Chart(document.getElementById('sgpaChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: sgpaLabels,
+    datasets: [
+      {
+        label: 'SGPA',
+        data: sgpaData,
+        borderColor: '#22d3ee',
+        backgroundColor: 'rgba(34,211,238,0.07)',
+        borderWidth: 2,
+        pointBackgroundColor: '#22d3ee',
+        pointRadius: 4,
+        tension: 0.4,
+        fill: true
+      },
+      {% if prediction %}{
+        label: 'Predicted',
+        data: predData,
+        borderColor: '#818cf8',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [4, 4],
+        pointBackgroundColor: '#818cf8',
+        pointRadius: 5,
+        tension: 0
+      }{% endif %}
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { min: 0, max: 10, grid: { color: gc }, ticks: { color: tc } },
+      x: { grid: { display: false }, ticks: { color: tc } }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Marks Bar Chart
+new Chart(document.getElementById('marksChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: subjs,
+    datasets: [{
+      data: marks,
+      backgroundColor: marks.map(m =>
+        m >= 85 ? 'rgba(52,211,153,0.45)' :
+        m >= 65 ? 'rgba(34,211,238,0.45)' :
+        m >= 50 ? 'rgba(251,191,36,0.45)' : 'rgba(251,113,133,0.45)'
+      ),
+      borderColor: marks.map(m =>
+        m >= 85 ? '#34d399' : m >= 65 ? '#22d3ee' : m >= 50 ? '#fbbf24' : '#fb7185'
+      ),
+      borderWidth: 1, borderRadius: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { min: 0, max: 100, grid: { color: gc }, ticks: { color: tc } },
+      x: { grid: { display: false }, ticks: { color: tc, maxRotation: 60, font: { size: 9 } } }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+</script>
+
+</body>
+</html>

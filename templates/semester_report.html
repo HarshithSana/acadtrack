@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semester {{ sem_number }} — AcadTrack</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="nav-brand" href="{{ url_for('dashboard') }}">Acad<span>Track</span></a>
+  <div class="nav-center">Semester {{ sem_number }} — Grade Report</div>
+  <div class="nav-right">
+    <a href="{{ url_for('dashboard') }}" class="btn-nav">← Dashboard</a>
+    <a href="{{ url_for('logout') }}" class="btn-nav">Logout</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div style="margin-bottom:1.5rem;" class="fade-up">
+    <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.5rem;font-weight:700;color:var(--text);">
+      Semester {{ sem_number }} Report
+    </div>
+    <div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem;">
+      {{ student_name }} &nbsp;·&nbsp; {{ student_id }} &nbsp;·&nbsp; {{ department }}
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row fade-up fade-up-1" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat">
+      <div class="stat-accent cyan"></div>
+      <div class="stat-label">SGPA</div>
+      <div class="stat-val cyan">{{ sgpa }}</div>
+      <div class="stat-sub">This semester</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent indigo"></div>
+      <div class="stat-label">Subjects</div>
+      <div class="stat-val indigo">{{ grades|length }}</div>
+      <div class="stat-sub">Total this sem</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent emerald"></div>
+      <div class="stat-label">Credits</div>
+      <div class="stat-val emerald">{{ total_credits }}</div>
+      <div class="stat-sub">Credit hours</div>
+    </div>
+    <div class="stat">
+      <div class="stat-accent {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}"></div>
+      <div class="stat-label">Backlogs</div>
+      <div class="stat-val {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}">{{ backlogs|length }}</div>
+      <div class="stat-sub">Failed subjects</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="grid-2 fade-up fade-up-2" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-head">Marks per Subject</div>
+      <div class="chart-box-lg"><canvas id="marksChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Grade Distribution</div>
+      <div class="chart-box-lg"><canvas id="gradeChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BACKLOGS ALERT -->
+  {% if backlogs %}
+  <div class="fade-up fade-up-3" style="margin-bottom:1.25rem;">
+    <div class="card" style="border-color:rgba(251,113,133,0.3);">
+      <div class="card-head" style="color:var(--rose);">⚠ Backlogs This Semester</div>
+      <div class="backlog-list">
+        {% for b in backlogs %}
+        <div class="backlog-item">{{ b.subject_name }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- GRADE SHEET -->
+  <div class="card fade-up fade-up-4">
+    <div class="card-head">
+      Grade Sheet — Semester {{ sem_number }}
+      <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Print</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Subject</th>
+            <th>Credits</th>
+            <th>Marks / 100</th>
+            <th>Grade</th>
+            <th>Grade Points</th>
+            <th>Credit × Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in grades %}
+          <tr {% if g.grade == 'F' %}style="background:rgba(251,113,133,0.04)"{% endif %}>
+            <td style="color:var(--text3);">{{ loop.index }}</td>
+            <td>{{ g.subject_name }}</td>
+            <td style="color:var(--text3);">{{ g.credits }}</td>
+            <td>
+              <div class="marks-cell">
+                {{ g.marks }}
+                <div class="marks-bar">
+                  <div class="marks-fill {% if g.marks >= 85 %}good{% elif g.marks >= 65 %}ok{% elif g.marks >= 50 %}warn{% else %}danger{% endif %}"
+                       style="width:{{ g.marks }}%"></div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ g.grade[0] }}">{{ g.grade }}</span></td>
+            <td style="color:var(--text3);">{{ g.points }}</td>
+            <td style="color:var(--cyan);">{{ g.grade_points }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem;">No grades found.</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if grades %}
+        <tfoot>
+          <tr>
+            <td colspan="2">Totals</td>
+            <td>{{ total_credits }}</td>
+            <td></td><td></td><td></td>
+            <td style="color:var(--cyan);">SGPA: {{ sgpa }}</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const gc = '#1e2d45', tc = '#475569';
+Chart.defaults.color = tc;
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 10;
+
+const grades  = {{ grades | map(attribute='grade')        | list | tojson }};
+const marks   = {{ grades | map(attribute='marks')        | list | tojson }};
+const subjects= {{ grades | map(attribute='subject_name') | list | tojson }};
+
+// Marks bar chart
+new Chart(document.getElementById('marksChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: subjects.map(s => s.length > 14 ? s.slice(0,14)+'…' : s),
+    datasets: [{
+      data: marks,
+      backgroundColor: marks.map(m =>
+        m >= 85 ? 'rgba(52,211,153,0.45)' :
+        m >= 65 ? 'rgba(34,211,238,0.45)' :
+        m >= 50 ? 'rgba(251,191,36,0.45)' : 'rgba(251,113,133,0.45)'
+      ),
+      borderColor: marks.map(m =>
+        m >= 85 ? '#34d399' : m >= 65 ? '#22d3ee' : m >= 50 ? '#fbbf24' : '#fb7185'
+      ),
+      borderWidth: 1, borderRadius: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { min: 0, max: 100, grid: { color: gc } },
+      x: { grid: { display: false }, ticks: { maxRotation: 50, font: { size: 9 } } }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Grade doughnut
+const gradeCounts = {};
+grades.forEach(g => gradeCounts[g] = (gradeCounts[g]||0) + 1);
+const gradeColors = { S:'#34d399',A:'#22d3ee',B:'#818cf8',C:'#fbbf24',D:'#fb923c',F:'#fb7185' };
+new Chart(document.getElementById('gradeChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(gradeCounts),
+    datasets: [{
+      data: Object.values(gradeCounts),
+      backgroundColor: Object.keys(gradeCounts).map(g => (gradeColors[g]||'#475569') + '99'),
+      borderColor:     Object.keys(gradeCounts).map(g => gradeColors[g]||'#475569'),
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { color: tc, padding: 12, font: { size: 11 } } } }
+  }
+});
+</script>
+</body>
+</html>

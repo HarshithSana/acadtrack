@@ -1,0 +1,6 @@
+Flask==3.0.0
+mysql-connector-python==8.2.0
+scikit-learn==1.5.2
+numpy==2.1.0
+joblib==1.4.2
+Werkzeug==3.0.1

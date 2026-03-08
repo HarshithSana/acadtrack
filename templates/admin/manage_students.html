@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Students — AcadTrack Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="admin-wrap">
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
+    <div class="sidebar-sub">ADMIN PORTAL</div>
+    <nav>
+      <div class="sidebar-section">Navigation</div>
+      <a href="{{ url_for('admin_panel') }}" class="sidebar-link">▪ Overview</a>
+      <a href="{{ url_for('manage_students') }}" class="sidebar-link active">▪ Students</a>
+      <a href="{{ url_for('manage_grades') }}" class="sidebar-link">▪ Grades</a>
+      <a href="{{ url_for('admin_rankings') }}" class="sidebar-link">▪ Rankings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
+      <div>
+        <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">Students</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">{{ students|length }} enrolled</div>
+      </div>
+      <button onclick="document.getElementById('addModal').classList.add('open')" class="btn btn-primary">+ Add Student</button>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <div class="card fade-up fade-up-1">
+      <div class="card-head">
+        All Students
+        <input type="text" id="search" placeholder="Search..." oninput="filterTable()" style="width:200px;padding:0.3rem 0.6rem;font-size:0.72rem;">
+      </div>
+      <div class="table-wrap">
+        <table id="studTable">
+          <thead>
+            <tr><th>Roll No</th><th>Name</th><th>Email</th><th>Department</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td style="color:var(--cyan);font-weight:600;">{{ s.student_id }}</td>
+              <td>{{ s.name }}</td>
+              <td style="color:var(--text3);">{{ s.email }}</td>
+              <td>{{ s.department }}</td>
+              <td>
+                <a href="{{ url_for('delete_student', sid=s.student_id) }}"
+                   class="btn btn-danger btn-sm"
+                   onclick="return confirm('Delete {{ s.name }}? This removes all their grades too.')">Delete</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem;">No students found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title">Add New Student</div>
+    <form method="POST" action="{{ url_for('add_student') }}">
+      <div class="form-group"><label>Roll Number</label>
+        <input type="text" name="student_id" placeholder="e.g. 237Z1A0561" required></div>
+      <div class="form-group"><label>Full Name</label>
+        <input type="text" name="name" placeholder="Full name" required></div>
+      <div class="form-group"><label>Email</label>
+        <input type="email" name="email" placeholder="student@college.edu"></div>
+      <div class="form-group"><label>Password</label>
+        <input type="text" name="password" placeholder="Initial password" required></div>
+      <div class="form-group"><label>Department</label>
+        <select name="department" required>
+          <option value="">Select</option>
+          <option>Computer Science</option>
+          <option>Electronics & Communication</option>
+          <option>Mechanical Engineering</option>
+          <option>Civil Engineering</option>
+          <option>Electrical Engineering</option>
+          <option>Information Technology</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="document.getElementById('addModal').classList.remove('open')" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('addModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#studTable tbody tr').forEach(r => {
+    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

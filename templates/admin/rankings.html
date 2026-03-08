@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rankings — AcadTrack Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="admin-wrap">
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
+    <div class="sidebar-sub">ADMIN PORTAL</div>
+    <nav>
+      <div class="sidebar-section">Navigation</div>
+      <a href="{{ url_for('admin_panel') }}" class="sidebar-link">▪ Overview</a>
+      <a href="{{ url_for('manage_students') }}" class="sidebar-link">▪ Students</a>
+      <a href="{{ url_for('manage_grades') }}" class="sidebar-link">▪ Grades</a>
+      <a href="{{ url_for('admin_rankings') }}" class="sidebar-link active">▪ Rankings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
+      <div>
+        <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">Department Rankings</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">Ranked by CGPA within each department</div>
+      </div>
+      <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Print</button>
+    </div>
+
+    {% for dept, students in dept_rankings.items() %}
+    <div class="card fade-up" style="margin-bottom:1.25rem;">
+      <div class="card-head">
+        {{ dept }}
+        <span style="font-size:0.7rem;color:var(--text3);font-weight:400;">{{ students|length }} students</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Rank</th><th>Roll No</th><th>Name</th><th>CGPA</th><th>Backlogs</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for s in students %}
+            <tr>
+              <td>
+                <span class="rank-badge rank-{% if s.rank <= 3 %}{{ s.rank }}{% else %}n{% endif %}">
+                  {{ s.rank }}
+                </span>
+              </td>
+              <td style="color:var(--cyan);font-weight:600;">{{ s.student_id }}</td>
+              <td>{{ s.name }}</td>
+              <td>
+                <span style="font-family:'Familjen Grotesk',sans-serif;font-weight:700;
+                  color:{% if s.cgpa >= 8.5 %}var(--emerald){% elif s.cgpa >= 6.5 %}var(--cyan){% elif s.cgpa >= 5.0 %}var(--amber){% else %}var(--rose){% endif %};">
+                  {{ s.cgpa }}
+                </span>
+              </td>
+              <td>
+                {% if s.backlogs > 0 %}
+                  <span style="color:var(--rose);">{{ s.backlogs }}</span>
+                {% else %}
+                  <span style="color:var(--emerald);">0</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if s.cgpa >= 8.5 %}<span class="badge badge-S">Distinction</span>
+                {% elif s.cgpa >= 7.5 %}<span class="badge badge-A">First Class</span>
+                {% elif s.cgpa >= 6.5 %}<span class="badge badge-B">Second Class</span>
+                {% elif s.cgpa >= 5.0 %}<span class="badge badge-C">Pass</span>
+                {% else %}<span class="badge badge-F">At Risk</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="card">
+      <p style="color:var(--text3);text-align:center;padding:2rem;">No ranking data available.</p>
+    </div>
+    {% endfor %}
+
+  </main>
+</div>
+</body>
+</html>
