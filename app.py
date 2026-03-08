@@ -39,6 +39,8 @@ def get_sgpa(student_id, semester_id):
         JOIN Subjects s ON g.subject_id = s.subject_id
         JOIN GradePoints gp ON g.grade = gp.grade
         WHERE g.student_id = %s AND g.semester_id = %s
+          AND g.grade != 'F'
+          AND s.credits > 0
     """, (student_id, semester_id))
     if not rows:
         return 0.0
@@ -53,6 +55,8 @@ def get_cgpa(student_id):
         JOIN Subjects s ON g.subject_id = s.subject_id
         JOIN GradePoints gp ON g.grade = gp.grade
         WHERE g.student_id = %s
+          AND g.grade != 'F'
+          AND s.credits > 0
     """, (student_id,))
     if not rows:
         return 0.0
@@ -204,8 +208,9 @@ def semester_report(sem_number):
 
     sem_id = sem[0]['semester_id']
     grades = execute_query("""
-        SELECT g.grade, g.marks, s.subject_name, s.credits,
-               gp.points, (s.credits * gp.points) AS grade_points
+        SELECT g.grade, g.marks, s.subject_name, s.credits,gp.points,
+               CASE WHEN g.grade = 'F' OR s.credits = 0 THEN 0
+                    ELSE (s.credits * gp.points) END AS grade_points
         FROM Grades g
         JOIN Subjects s    ON g.subject_id  = s.subject_id
         JOIN GradePoints gp ON g.grade      = gp.grade
@@ -213,19 +218,30 @@ def semester_report(sem_number):
         ORDER BY s.subject_name
     """, (sid, sem_id)) or []
 
-    sgpa          = get_sgpa(sid, sem_id)
-    total_credits = sum(float(g['credits']) for g in grades)
-    backlogs      = [g for g in grades if g['grade'] == 'F']
+    sgpa     = get_sgpa(sid, sem_id)
+    backlogs = [g for g in grades if g['grade'] == 'F']
+
+    # Credits earned = only passed subjects with credits > 0
+    earned_credits = sum(
+        float(g['credits']) for g in grades
+        if g['grade'] != 'F' and float(g['credits']) > 0
+    )
+    # Max possible credits = all subjects with credits > 0
+    max_credits = sum(
+        float(g['credits']) for g in grades
+        if float(g['credits']) > 0
+    )
 
     return render_template('semester_report.html',
-        student_name  = session['student_name'],
-        department    = session['department'],
-        student_id    = sid,
-        sem_number    = sem_number,
-        grades        = grades,
-        sgpa          = sgpa,
-        total_credits = total_credits,
-        backlogs      = backlogs
+        student_name   = session['student_name'],
+        department     = session['department'],
+        student_id     = sid,
+        sem_number     = sem_number,
+        grades         = grades,
+        sgpa           = sgpa,
+        earned_credits = earned_credits,
+        max_credits    = max_credits,
+        backlogs       = backlogs
     )
 
 # ═══════════════════════════════════════════════

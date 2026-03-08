@@ -46,8 +46,8 @@
     <div class="stat">
       <div class="stat-accent emerald"></div>
       <div class="stat-label">Credits</div>
-      <div class="stat-val emerald">{{ total_credits }}</div>
-      <div class="stat-sub">Credit hours</div>
+      <div class="stat-val emerald">{{ earned_credits }} / {{ max_credits }}</div>
+      <div class="stat-sub">Credits earned</div>
     </div>
     <div class="stat">
       <div class="stat-accent {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}"></div>
@@ -129,7 +129,7 @@
         <tfoot>
           <tr>
             <td colspan="2">Totals</td>
-            <td>{{ total_credits }}</td>
+            <td>{{ earned_credits }} / {{ max_credits }}</td>
             <td></td><td></td><td></td>
             <td style="color:var(--cyan);">SGPA: {{ sgpa }}</td>
           </tr>
