@@ -4,7 +4,7 @@ from ml.predictor import predict_next_sgpa, get_trend
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = 'acadtrack_v2_secret_2024'
+app.secret_key = 'acadtrack_secret_2024'
 
 # ═══════════════════════════════════════════════
 # AUTH DECORATORS
@@ -208,7 +208,8 @@ def semester_report(sem_number):
 
     sem_id = sem[0]['semester_id']
     grades = execute_query("""
-        SELECT g.grade, g.marks, s.subject_name, s.credits,gp.points,
+        SELECT g.grade, g.marks, s.subject_name, s.credits,
+               gp.points,
                CASE WHEN g.grade = 'F' OR s.credits = 0 THEN 0
                     ELSE (s.credits * gp.points) END AS grade_points
         FROM Grades g
@@ -365,22 +366,53 @@ def delete_grade(gid):
 @app.route('/admin/rankings')
 @admin_required
 def admin_rankings():
-    students  = execute_query("SELECT student_id, name, department FROM Students ORDER BY department, name") or []
+    # Single query: calculate CGPA for ALL students at once
+    # Excludes failed (F) and zero-credit subjects — matches get_cgpa() logic
+    cgpa_rows = execute_query(
+        """
+        SELECT
+            st.student_id,
+            st.name,
+            st.department,
+            ROUND(
+                SUM(CASE WHEN g.grade != 'F' AND s.credits > 0
+                         THEN s.credits * gp.points ELSE 0 END)
+                /
+                NULLIF(SUM(CASE WHEN g.grade != 'F' AND s.credits > 0
+                               THEN s.credits ELSE 0 END), 0)
+            , 2) AS cgpa
+        FROM Students st
+        LEFT JOIN Grades g      ON st.student_id  = g.student_id
+        LEFT JOIN Subjects s    ON g.subject_id   = s.subject_id
+        LEFT JOIN GradePoints gp ON g.grade       = gp.grade
+        GROUP BY st.student_id, st.name, st.department
+        ORDER BY st.department, cgpa DESC
+        """
+    ) or []
+
+    # Single query: backlog count per student
+    backlog_rows = execute_query(
+        "SELECT student_id, COUNT(*) AS backlog_count FROM Grades WHERE grade = 'F' GROUP BY student_id"
+    ) or []
+
+    # Lookup dict: { student_id: backlog_count }
+    backlog_map = {r['student_id']: r['backlog_count'] for r in backlog_rows}
+
+    # Group by department and assign ranks
     dept_rankings = {}
-    for s in students:
-        cgpa = get_cgpa(s['student_id'])
-        dept = s['department']
+    for r in cgpa_rows:
+        dept = r['department']
         if dept not in dept_rankings:
             dept_rankings[dept] = []
         dept_rankings[dept].append({
-            'student_id': s['student_id'],
-            'name':       s['name'],
-            'cgpa':       cgpa,
-            'backlogs':   len(get_backlogs(s['student_id']))
+            'student_id': r['student_id'],
+            'name':       r['name'],
+            'cgpa':       float(r['cgpa']) if r['cgpa'] else 0.0,
+            'backlogs':   backlog_map.get(r['student_id'], 0)
         })
-    # Sort each dept by CGPA desc and assign rank
+
+    # Assign rank (SQL already sorted by cgpa DESC per dept)
     for dept in dept_rankings:
-        dept_rankings[dept].sort(key=lambda x: x['cgpa'], reverse=True)
         for i, entry in enumerate(dept_rankings[dept], 1):
             entry['rank'] = i
 
