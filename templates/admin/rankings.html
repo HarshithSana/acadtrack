@@ -7,69 +7,58 @@
 </head>
 <body>
 <div class="admin-wrap">
-  <aside class="sidebar">
-    <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
-    <div class="sidebar-sub">ADMIN PORTAL</div>
-    <nav>
-      <div class="sidebar-section">Navigation</div>
-      <a href="{{ url_for('admin_panel') }}" class="sidebar-link">▪ Overview</a>
-      <a href="{{ url_for('manage_students') }}" class="sidebar-link">▪ Students</a>
-      <a href="{{ url_for('manage_grades') }}" class="sidebar-link">▪ Grades</a>
-      <a href="{{ url_for('admin_rankings') }}" class="sidebar-link active">▪ Rankings</a>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
-    </div>
-  </aside>
+  {% set active_page = 'rankings' %}
+  {% include 'admin/_base.html' %}
 
   <main class="admin-main">
+    <div class="breadcrumb fade-up">
+      <a href="{{ url_for('admin_panel') }}">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Rankings</span>
+    </div>
+
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
       <div>
         <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">Department Rankings</div>
-        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">Ranked by CGPA within each department</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">Ranked by CGPA within each branch</div>
       </div>
       <button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨 Print</button>
     </div>
 
+    <div class="card fade-up fade-up-1 no-print" style="margin-bottom:1rem;">
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="globalSearch" placeholder="Search student name or roll no across all branches..." oninput="applyFilters()" style="flex:1;min-width:200px;">
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+          <button class="dept-tab active" onclick="setBranch(this,'')">All</button>
+          {% for dept in dept_rankings.keys() %}
+          <button class="dept-tab" data-branch="{{ dept }}" onclick="setBranch(this,'{{ dept }}')">{{ dept }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
     {% for dept, students in dept_rankings.items() %}
-    <div class="card fade-up" style="margin-bottom:1.25rem;">
+    <div class="card fade-up rank-section" data-branch="{{ dept }}" style="margin-bottom:1.25rem;">
       <div class="card-head">
-        {{ dept }}
-        <span style="font-size:0.7rem;color:var(--text3);font-weight:400;">{{ students|length }} students</span>
+        <span><span class="badge-dept badge-dept-{{ dept }}" style="margin-right:.5rem;">{{ dept }}</span> Rankings</span>
+        <span style="font-size:.7rem;color:var(--text3);font-weight:400;">{{ students|length }} students</span>
       </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr><th>Rank</th><th>Roll No</th><th>Name</th><th>CGPA</th><th>Backlogs</th><th>Status</th></tr>
-          </thead>
+          <thead><tr><th>Rank</th><th>Roll No</th><th>Name</th><th>CGPA</th><th>Backlogs</th><th>Status</th></tr></thead>
           <tbody>
             {% for s in students %}
-            <tr>
-              <td>
-                <span class="rank-badge rank-{% if s.rank <= 3 %}{{ s.rank }}{% else %}n{% endif %}">
-                  {{ s.rank }}
-                </span>
-              </td>
+            <tr class="rank-row">
+              <td><span class="rank-badge rank-{% if s.rank<=3 %}{{ s.rank }}{% else %}n{% endif %}">{{ s.rank }}</span></td>
               <td style="color:var(--cyan);font-weight:600;">{{ s.student_id }}</td>
               <td>{{ s.name }}</td>
+              <td><span style="font-family:'Familjen Grotesk',sans-serif;font-weight:700;color:{% if s.cgpa>=8.5 %}var(--emerald){% elif s.cgpa>=6.5 %}var(--cyan){% elif s.cgpa>=5.0 %}var(--amber){% else %}var(--rose){% endif %};">{{ s.cgpa }}</span></td>
+              <td>{% if s.backlogs>0 %}<span style="color:var(--rose);">{{ s.backlogs }}</span>{% else %}<span style="color:var(--emerald);">0</span>{% endif %}</td>
               <td>
-                <span style="font-family:'Familjen Grotesk',sans-serif;font-weight:700;
-                  color:{% if s.cgpa >= 8.5 %}var(--emerald){% elif s.cgpa >= 6.5 %}var(--cyan){% elif s.cgpa >= 5.0 %}var(--amber){% else %}var(--rose){% endif %};">
-                  {{ s.cgpa }}
-                </span>
-              </td>
-              <td>
-                {% if s.backlogs > 0 %}
-                  <span style="color:var(--rose);">{{ s.backlogs }}</span>
-                {% else %}
-                  <span style="color:var(--emerald);">0</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if s.cgpa >= 8.5 %}<span class="badge badge-S">Distinction</span>
-                {% elif s.cgpa >= 7.5 %}<span class="badge badge-A">First Class</span>
-                {% elif s.cgpa >= 6.5 %}<span class="badge badge-B">Second Class</span>
-                {% elif s.cgpa >= 5.0 %}<span class="badge badge-C">Pass</span>
+                {% if s.cgpa>=8.5 %}<span class="badge badge-S">Distinction</span>
+                {% elif s.cgpa>=7.5 %}<span class="badge badge-A">First Class</span>
+                {% elif s.cgpa>=6.5 %}<span class="badge badge-B">Second Class</span>
+                {% elif s.cgpa>=5.0 %}<span class="badge badge-C">Pass</span>
                 {% else %}<span class="badge badge-F">At Risk</span>{% endif %}
               </td>
             </tr>
@@ -78,13 +67,38 @@
         </table>
       </div>
     </div>
-    {% else %}
-    <div class="card">
-      <p style="color:var(--text3);text-align:center;padding:2rem;">No ranking data available.</p>
-    </div>
     {% endfor %}
-
   </main>
 </div>
+
+{% include 'admin/_toast.html' %}
+
+<style>
+.dept-tab{padding:.25rem .75rem;font-size:.7rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:4px;cursor:pointer;transition:all .15s}
+.dept-tab:hover{background:var(--surface2);color:var(--text1)}
+.dept-tab.active{background:var(--cyan);color:#0f172a;border-color:var(--cyan);font-weight:700}
+.badge-dept{padding:2px 8px;border-radius:4px;font-size:.68rem;font-family:'JetBrains Mono',monospace}
+.badge-dept-CSE{background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid rgba(34,211,238,.3)}
+.badge-dept-IT{background:rgba(129,140,248,.15);color:#818cf8;border:1px solid rgba(129,140,248,.3)}
+.badge-dept-CSM{background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3)}
+.badge-dept-CSD{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+.rank-row.hidden{display:none}
+</style>
+<script>
+let activeBranch='';
+function setBranch(el,branch){
+  activeBranch=branch;
+  document.querySelectorAll('.dept-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');applyFilters();
+}
+function applyFilters(){
+  const q=document.getElementById('globalSearch').value.toLowerCase();
+  document.querySelectorAll('.rank-section').forEach(sec=>{
+    const show=!activeBranch||sec.dataset.branch===activeBranch;
+    sec.style.display=show?'':'none';
+    if(show) sec.querySelectorAll('.rank-row').forEach(r=>r.classList.toggle('hidden',q&&!r.innerText.toLowerCase().includes(q)));
+  });
+}
+</script>
 </body>
 </html>

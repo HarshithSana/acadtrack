@@ -7,26 +7,23 @@
 </head>
 <body>
 <div class="admin-wrap">
-  <aside class="sidebar">
-    <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
-    <div class="sidebar-sub">ADMIN PORTAL</div>
-    <nav>
-      <div class="sidebar-section">Navigation</div>
-      <a href="{{ url_for('admin_panel') }}" class="sidebar-link">▪ Overview</a>
-      <a href="{{ url_for('manage_students') }}" class="sidebar-link">▪ Students</a>
-      <a href="{{ url_for('manage_grades') }}" class="sidebar-link active">▪ Grades</a>
-      <a href="{{ url_for('admin_rankings') }}" class="sidebar-link">▪ Rankings</a>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
-    </div>
-  </aside>
+  {% set active_page = 'grades' %}
+  {% include 'admin/_base.html' %}
 
   <main class="admin-main">
+    <div class="breadcrumb fade-up">
+      <a href="{{ url_for('admin_panel') }}">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Grades</span>
+      {% if dept_filter %}<span class="breadcrumb-sep">›</span><span class="breadcrumb-current">{{ dept_filter }}</span>{% endif %}
+    </div>
+
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
       <div>
         <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">Grades</div>
-        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">{{ grades|length }} records</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:0.2rem;">
+          {% if dept_filter %}{{ grades|length }} records — {{ dept_filter }}{% else %}Showing first 200 records — filter by branch to see all{% endif %}
+        </div>
       </div>
       <button onclick="document.getElementById('addModal').classList.add('open')" class="btn btn-primary">+ Add Grade</button>
     </div>
@@ -35,52 +32,60 @@
       {% for cat, msg in messages %}<div class="alert alert-{{ cat }}">{{ msg }}</div>{% endfor %}
     {% endwith %}
 
-    <!-- FILTER BAR -->
     <div class="card fade-up fade-up-1" style="margin-bottom:1rem;">
-      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
         <input type="text" id="search" placeholder="Search student / subject..." oninput="filterTable()" style="flex:1;min-width:160px;">
-        <select id="semFilter" onchange="filterTable()" style="width:160px;">
+        <select id="semFilter" onchange="filterTable()" style="width:150px;">
           <option value="">All Semesters</option>
-          {% for sem in semesters %}
-          <option value="{{ sem.semester_number }}">Semester {{ sem.semester_number }}</option>
-          {% endfor %}
+          {% for sem in semesters %}<option value="{{ sem.semester_number }}">Semester {{ sem.semester_number }}</option>{% endfor %}
         </select>
-        <select id="gradeFilter" onchange="filterTable()" style="width:130px;">
+        <select id="gradeFilter" onchange="filterTable()" style="width:120px;">
           <option value="">All Grades</option>
-          {% for gp in grade_points %}
-          <option value="{{ gp.grade }}">{{ gp.grade }}</option>
-          {% endfor %}
+          {% for gp in grade_points %}<option value="{{ gp.grade }}">{{ gp.grade }}</option>{% endfor %}
         </select>
+        <form method="GET" style="display:flex;gap:0.5rem;align-items:center;">
+          <select name="department" onchange="this.form.submit()" style="width:130px;">
+            <option value="">All Branches</option>
+            {% for d in departments %}<option value="{{ d.department }}" {% if dept_filter==d.department %}selected{% endif %}>{{ d.department }}</option>{% endfor %}
+          </select>
+        </form>
       </div>
     </div>
 
     <div class="card fade-up fade-up-2">
-      <div class="card-head">Grade Records</div>
+      <div class="card-head">
+        Grade Records
+        <span id="visibleCount" style="font-size:0.7rem;color:var(--text3);font-weight:400;"></span>
+      </div>
       <div class="table-wrap">
         <table id="gradeTable">
           <thead>
-            <tr><th>Roll No</th><th>Name</th><th>Semester</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Action</th></tr>
+            <tr><th>Roll No</th><th>Name</th><th>Branch</th><th>Sem</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Action</th></tr>
           </thead>
           <tbody>
             {% for g in grades %}
             <tr>
               <td style="color:var(--cyan);font-weight:600;">{{ g.student_id }}</td>
               <td>{{ g.name }}</td>
+              <td><span class="badge-dept badge-dept-{{ g.department }}">{{ g.department }}</span></td>
               <td>{{ g.semester_number }}</td>
               <td>{{ g.subject_name }}</td>
-              <td>{{ g.marks }}</td>
+              <td style="color:{% if g.marks>=80 %}var(--emerald){% elif g.marks>=60 %}var(--cyan){% elif g.marks>=50 %}var(--amber){% else %}var(--rose){% endif %};">{{ g.marks }}</td>
               <td><span class="badge badge-{{ g.grade[0] }}">{{ g.grade }}</span></td>
               <td>
-                <a href="{{ url_for('delete_grade', gid=g.grade_id) }}"
-                   class="btn btn-danger btn-sm"
-                   onclick="return confirm('Delete this grade?')">Delete</a>
+                <button class="btn btn-danger btn-sm"
+                  onclick="confirmDelete('{{ url_for('delete_grade', gid=g.grade_id) }}','grade for {{ g.name }}')">Delete</button>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem;">No records found.</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:2rem;">No records. Select a branch above to load grades.</td></tr>
             {% endfor %}
           </tbody>
         </table>
+      </div>
+      <div style="padding:0.75rem 1rem;font-size:0.7rem;color:var(--text3);border-top:1px solid var(--border);">
+        {% if not dept_filter %}⚠ Showing first 200 records. Select a branch above to view all records for that branch.
+        {% else %}Showing all {{ grades|length }} records for {{ dept_filter }}.{% endif %}
       </div>
     </div>
   </main>
@@ -92,27 +97,21 @@
     <div class="modal-title">Add Grade Entry</div>
     <form method="POST" action="{{ url_for('add_grade') }}">
       <div class="form-group"><label>Student</label>
-        <select name="student_id" required>
+        <select name="student_id" id="modalStudent" required onchange="filterSubjects()">
           <option value="">Select Student</option>
-          {% for s in students %}
-          <option value="{{ s.student_id }}">{{ s.student_id }} — {{ s.name }}</option>
-          {% endfor %}
+          {% for s in students %}<option value="{{ s.student_id }}" data-dept="{{ s.department }}">{{ s.student_id }} — {{ s.name }} ({{ s.department }})</option>{% endfor %}
         </select>
       </div>
       <div class="form-group"><label>Subject</label>
-        <select name="subject_id" required>
-          <option value="">Select Subject</option>
-          {% for sub in subjects %}
-          <option value="{{ sub.subject_id }}">{{ sub.subject_name }}</option>
-          {% endfor %}
+        <select name="subject_id" id="modalSubject" required>
+          <option value="">Select student first</option>
+          {% for sub in subjects %}<option value="{{ sub.subject_id }}" data-dept="{{ sub.department }}" data-sem="{{ sub.semester }}">[{{ sub.department }} Sem{{ sub.semester }}] {{ sub.subject_name }}</option>{% endfor %}
         </select>
       </div>
       <div class="form-group"><label>Semester</label>
         <select name="semester_id" required>
           <option value="">Select Semester</option>
-          {% for sem in semesters %}
-          <option value="{{ sem.semester_id }}">Semester {{ sem.semester_number }}</option>
-          {% endfor %}
+          {% for sem in semesters %}<option value="{{ sem.semester_id }}">Semester {{ sem.semester_number }}</option>{% endfor %}
         </select>
       </div>
       <div class="form-group"><label>Marks (0–100)</label>
@@ -120,9 +119,7 @@
       <div class="form-group"><label>Grade</label>
         <select name="grade" required>
           <option value="">Select Grade</option>
-          {% for gp in grade_points %}
-          <option value="{{ gp.grade }}">{{ gp.grade }}</option>
-          {% endfor %}
+          {% for gp in grade_points %}<option value="{{ gp.grade }}">{{ gp.grade }}</option>{% endfor %}
         </select>
       </div>
       <div class="modal-footer">
@@ -133,20 +130,37 @@
   </div>
 </div>
 
+{% include 'admin/_toast.html' %}
+
+<style>
+.badge-dept{padding:2px 8px;border-radius:4px;font-size:.68rem;font-family:'JetBrains Mono',monospace}
+.badge-dept-CSE{background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid rgba(34,211,238,.3)}
+.badge-dept-IT{background:rgba(129,140,248,.15);color:#818cf8;border:1px solid rgba(129,140,248,.3)}
+.badge-dept-CSM{background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3)}
+.badge-dept-CSD{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+</style>
 <script>
-document.getElementById('addModal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); });
-function filterTable() {
-  const q  = document.getElementById('search').value.toLowerCase();
-  const sf = document.getElementById('semFilter').value;
-  const gf = document.getElementById('gradeFilter').value;
-  document.querySelectorAll('#gradeTable tbody tr').forEach(r => {
-    const cells = r.querySelectorAll('td');
-    const matchQ  = !q  || r.innerText.toLowerCase().includes(q);
-    const matchS  = !sf || (cells[2] && cells[2].innerText.trim() === sf);
-    const matchG  = !gf || (cells[5] && cells[5].innerText.trim() === gf);
-    r.style.display = matchQ && matchS && matchG ? '' : 'none';
-  });
+document.getElementById('addModal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open')});
+function filterSubjects(){
+  const sel=document.getElementById('modalStudent');
+  const dept=sel.options[sel.selectedIndex]?.dataset?.dept||'';
+  Array.from(document.getElementById('modalSubject').options).forEach(o=>{if(o.value)o.hidden=dept?o.dataset.dept!==dept:false});
+  document.getElementById('modalSubject').value='';
 }
+function filterTable(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const sf=document.getElementById('semFilter').value;
+  const gf=document.getElementById('gradeFilter').value;
+  const rows=document.querySelectorAll('#gradeTable tbody tr');
+  let v=0;
+  rows.forEach(r=>{
+    const cells=r.querySelectorAll('td');if(!cells.length)return;
+    const show=(!q||r.innerText.toLowerCase().includes(q))&&(!sf||cells[3]?.innerText.trim()===sf)&&(!gf||cells[6]?.innerText.trim()===gf);
+    r.style.display=show?'':'none';if(show)v++;
+  });
+  document.getElementById('visibleCount').textContent=`${v} visible`;
+}
+filterTable();
 </script>
 </body>
 </html>
