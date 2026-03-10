@@ -1,0 +1,20 @@
+{# Shared sidebar macro — include in every admin page #}
+{# Usage: {% set active_page = 'overview' %} then {% include 'admin/_base.html' %} #}
+<aside class="sidebar">
+  <a class="sidebar-brand" href="{{ url_for('admin_panel') }}">AcadTrack</a>
+  <div class="sidebar-sub">ADMIN PORTAL</div>
+  <nav>
+    <div class="sidebar-section">Navigation</div>
+    <a href="{{ url_for('admin_panel') }}"
+       class="sidebar-link {% if active_page == 'overview' %}active{% endif %}">▪ Overview</a>
+    <a href="{{ url_for('manage_students') }}"
+       class="sidebar-link {% if active_page == 'students' %}active{% endif %}">▪ Students</a>
+    <a href="{{ url_for('manage_grades') }}"
+       class="sidebar-link {% if active_page == 'grades' %}active{% endif %}">▪ Grades</a>
+    <a href="{{ url_for('admin_rankings') }}"
+       class="sidebar-link {% if active_page == 'rankings' %}active{% endif %}">▪ Rankings</a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="{{ url_for('admin_logout') }}" class="sidebar-link" style="color:var(--rose);">▪ Logout</a>
+  </div>
+</aside>

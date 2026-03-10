@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ student_name }} — Admin View</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="admin-wrap">
+  {% set active_page = 'students' %}
+  {% include 'admin/_base.html' %}
+
+  <main class="admin-main">
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb fade-up">
+      <a href="{{ url_for('admin_panel') }}">Admin</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="{{ url_for('manage_students') }}">Students</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">{{ student_name }}</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.75rem;" class="fade-up">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--cyan-dim);border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;font-family:'Familjen Grotesk',sans-serif;font-weight:700;font-size:1.2rem;color:var(--cyan);">
+          {{ student_name[0] }}
+        </div>
+        <div>
+          <div style="font-family:'Familjen Grotesk',sans-serif;font-size:1.4rem;font-weight:700;">{{ student_name }}</div>
+          <div style="font-size:0.7rem;color:var(--text3);margin-top:0.1rem;">{{ student_id }} · {{ department }} · {{ email }}</div>
+        </div>
+      </div>
+      <span style="font-size:0.7rem;color:var(--amber);background:var(--amber-dim);border:1px solid rgba(251,191,36,.3);padding:.3rem .75rem;border-radius:6px;">
+        👁 Admin View — Read Only
+      </span>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row fade-up fade-up-1" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat">
+        <div class="stat-accent cyan"></div>
+        <div class="stat-label">CGPA</div>
+        <div class="stat-val cyan">{{ cgpa }}</div>
+        <div class="stat-sub">Cumulative</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}"></div>
+        <div class="stat-label">Backlogs</div>
+        <div class="stat-val {% if backlogs|length == 0 %}emerald{% else %}rose{% endif %}">{{ backlogs|length }}</div>
+        <div class="stat-sub">Failed subjects</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent indigo"></div>
+        <div class="stat-label">Rank</div>
+        <div class="stat-val indigo">{% if dept_rank %}{{ dept_rank }}{% else %}—{% endif %}</div>
+        <div class="stat-sub">of {{ dept_total }} in {{ department }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-accent emerald"></div>
+        <div class="stat-label">Semesters</div>
+        <div class="stat-val emerald">{{ semester_data|length }}</div>
+        <div class="stat-sub">Completed</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="grid-2 fade-up fade-up-2">
+      <div class="card">
+        <div class="card-head">SGPA Trend</div>
+        <div class="chart-box"><canvas id="sgpaChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">Marks by Subject</div>
+        <div class="chart-box"><canvas id="marksChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ML PREDICTION -->
+    {% if prediction %}
+    <div class="card fade-up fade-up-3" style="margin-bottom:1.25rem;">
+      <div class="card-head">ML Prediction — Next Semester</div>
+      <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;padding:0.5rem 0;">
+        <div>
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.25rem;">PREDICTED SGPA</div>
+          <div style="font-family:'Familjen Grotesk',sans-serif;font-size:2rem;font-weight:700;color:var(--cyan);">{{ prediction.predicted_sgpa }}</div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.25rem;">TREND</div>
+          <div style="font-size:0.9rem;color:{% if trend == 'improving' %}var(--emerald){% elif trend == 'declining' %}var(--rose){% else %}var(--amber){% endif %};">
+            {% if trend == 'improving' %}↑ Improving{% elif trend == 'declining' %}↓ Declining{% else %}→ Stable{% endif %}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:0.25rem;">CONFIDENCE</div>
+          <div style="font-size:0.8rem;color:var(--text2);">{{ prediction.confidence|capitalize }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- GRADES TABLE -->
+    <div class="card fade-up fade-up-4">
+      <div class="card-head">All Grades</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sem</th><th>Subject</th><th>Credits</th><th>Marks</th><th>Grade</th><th>Points</th></tr></thead>
+          <tbody>
+            {% for g in all_grades %}
+            <tr>
+              <td>{{ g.semester_number }}</td>
+              <td>{{ g.subject_name }}</td>
+              <td>{{ g.credits }}</td>
+              <td style="color:{% if g.marks>=80 %}var(--emerald){% elif g.marks>=60 %}var(--cyan){% elif g.marks>=50 %}var(--amber){% else %}var(--rose){% endif %};">{{ g.marks }}</td>
+              <td><span class="badge badge-{{ g.grade[0] }}">{{ g.grade }}</span></td>
+              <td>{{ g.points }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem;">No grade records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+{% include 'admin/_toast.html' %}
+
+<script>
+Chart.defaults.color='#475569'; Chart.defaults.font.family="'JetBrains Mono',monospace"; Chart.defaults.font.size=10;
+new Chart(document.getElementById('sgpaChart'),{
+  type:'line',
+  data:{labels:{{ chart_sems|tojson }},datasets:[{data:{{ chart_sgpas|tojson }},borderColor:'#22d3ee',backgroundColor:'rgba(34,211,238,.08)',tension:.4,fill:true,pointBackgroundColor:'#22d3ee',pointRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10,grid:{color:'#1e2d45'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}
+});
+new Chart(document.getElementById('marksChart'),{
+  type:'bar',
+  data:{labels:{{ chart_subjects|tojson }},datasets:[{data:{{ chart_marks|tojson }},backgroundColor:'rgba(129,140,248,.4)',borderColor:'#818cf8',borderWidth:1,borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100,grid:{color:'#1e2d45'}},x:{grid:{display:false},ticks:{maxRotation:45}}},plugins:{legend:{display:false}}}
+});
+</script>
+</body>
+</html>

@@ -584,3 +584,86 @@ select option { background: var(--surface2); }
   body { background: #fff; color: #000; font-size: 12px; }
   .card { border: 1px solid #ccc; box-shadow: none; }
 }
+
+/* ── BREADCRUMBS ── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  color: var(--text3);
+  margin-bottom: 0.6rem;
+}
+.breadcrumb a {
+  color: var(--text3);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.breadcrumb a:hover { color: var(--cyan); }
+.breadcrumb-sep { color: var(--border2); }
+.breadcrumb-current { color: var(--text2); }
+
+/* ── TOAST NOTIFICATION ── */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: toastIn 0.25s ease;
+  pointer-events: all;
+  min-width: 220px;
+  max-width: 340px;
+}
+.toast-success { border-left: 3px solid var(--emerald); }
+.toast-error   { border-left: 3px solid var(--rose); }
+.toast-warning { border-left: 3px solid var(--amber); }
+.toast-icon    { font-size: 1rem; flex-shrink: 0; }
+.toast-msg     { flex: 1; color: var(--text); }
+.toast-close   { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1; }
+.toast-close:hover { color: var(--text); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+/* ── VIEW STUDENT PROFILE LINK ── */
+.btn-profile {
+  background: var(--indigo-dim);
+  color: var(--indigo);
+  border: 1px solid rgba(129,140,248,0.3);
+}
+.btn-profile:hover {
+  background: var(--indigo);
+  color: var(--bg);
+}
+
+/* ── PRINT: hide sidebar fully ── */
+@media print {
+  .sidebar, .no-print { display: none !important; }
+  .admin-wrap { display: block !important; }
+  .admin-main { padding: 0 !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { border: 1px solid #ccc !important; box-shadow: none !important; background: #fff !important; }
+  table th, table td { color: #000 !important; border-color: #ccc !important; }
+  .rank-badge { border: 1px solid #999 !important; color: #000 !important; background: #eee !important; }
+  .badge { border: 1px solid #999 !important; color: #000 !important; background: #eee !important; }
+}

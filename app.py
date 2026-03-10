@@ -306,9 +306,15 @@ def admin_panel():
     total_students = execute_query("SELECT COUNT(*) as c FROM Students")[0]['c']
     total_subjects = execute_query("SELECT COUNT(*) as c FROM Subjects")[0]['c']
     total_grades   = execute_query("SELECT COUNT(*) as c FROM Grades")[0]['c']
-    dept_stats     = execute_query(
-        "SELECT department, COUNT(*) as cnt FROM Students GROUP BY department ORDER BY department"
-    ) or []
+    dept_stats = execute_query("""
+        SELECT s.department,
+               COUNT(DISTINCT s.student_id) as cnt,
+               SUM(CASE WHEN g.grade = 'F' THEN 1 ELSE 0 END) as backlogs
+        FROM Students s
+        LEFT JOIN Grades g ON s.student_id = g.student_id
+        GROUP BY s.department
+        ORDER BY s.department
+    """) or []
     backlog_count = execute_query(
         "SELECT COUNT(*) as c FROM Grades WHERE grade = 'F'"
     )[0]['c']
@@ -481,6 +487,69 @@ def admin_rankings():
     )
 
 # ═══════════════════════════════════════════════
+@app.route('/admin/student/<sid>')
+@admin_required
+def student_profile(sid):
+    """Admin view of a student's full profile — read-only."""
+    student = execute_query(
+        "SELECT * FROM Students WHERE student_id = %s", (sid,)
+    )
+    if not student:
+        flash('Student not found.', 'error')
+        return redirect(url_for('manage_students'))
+
+    s    = student[0]
+    dept = s['department']
+
+    cgpa          = get_cgpa(sid, dept)
+    backlogs      = get_backlogs(sid, dept)
+    semester_data = get_semester_data(sid, dept)
+    sgpa_history  = [s['sgpa'] for s in semester_data]
+    dept_rank, dept_total = get_dept_rank(sid, dept)
+
+    prediction = None
+    trend      = get_trend(sgpa_history)
+    if len(sgpa_history) >= 2:
+        prediction = predict_next_sgpa(sgpa_history)
+
+    all_grades = execute_query("""
+        SELECT g.grade, g.marks, s.subject_name, s.credits,
+               g.semester_id AS semester_number, gp.points
+        FROM Grades g
+        JOIN Subjects s      ON g.subject_id  = s.subject_id
+        JOIN Branch_Subjects bs ON bs.subject_id = s.subject_id
+                                AND bs.department = %s
+                                AND bs.semester   = g.semester_id
+        JOIN GradePoints gp  ON g.grade = gp.grade
+        WHERE g.student_id = %s
+        ORDER BY g.semester_id, s.subject_name
+    """, (dept, sid)) or []
+
+    chart_sems     = [f"Sem {s['semester_number']}" for s in semester_data]
+    chart_sgpas    = sgpa_history
+    chart_subjects = [g['subject_name'][:16] for g in all_grades]
+    chart_marks    = [g['marks'] for g in all_grades]
+
+    return render_template('admin/student_profile.html',
+        student_name   = student[0]['name'],
+        student_id     = sid,
+        department     = dept,
+        email          = student[0].get('email', ''),
+        cgpa           = cgpa,
+        backlogs       = backlogs,
+        semester_data  = semester_data,
+        all_grades     = all_grades,
+        dept_rank      = dept_rank,
+        dept_total     = dept_total,
+        prediction     = prediction,
+        trend          = trend,
+        chart_sems     = chart_sems,
+        chart_sgpas    = chart_sgpas,
+        chart_subjects = chart_subjects,
+        chart_marks    = chart_marks,
+        admin_name     = session['admin_name']
+    )
+
 
 if __name__ == '__main__':
     app.run(debug=True)

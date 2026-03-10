@@ -1,0 +1,54 @@
+{# Drop this before </body> in any admin template #}
+<div id="toast-container"></div>
+<script>
+function showToast(msg, type='success') {
+  const icons = { success:'✓', error:'✕', warning:'⚠' };
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type]||'ℹ'}</span>
+    <span class="toast-msg">${msg}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.25s ease forwards';
+    setTimeout(() => toast.remove(), 250);
+  }, 3500);
+}
+
+// Auto-show toasts for Flask flash messages
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.alert').forEach(el => {
+    const type = el.classList.contains('alert-success') ? 'success'
+               : el.classList.contains('alert-error')   ? 'error' : 'warning';
+    showToast(el.textContent.trim(), type);
+    el.style.display = 'none'; // hide the inline alert, toast takes over
+  });
+});
+
+// Confirm delete with toast feedback
+function confirmDelete(url, name) {
+  const overlay = document.getElementById('confirmOverlay');
+  document.getElementById('confirmMsg').textContent = `Delete "${name}"? This cannot be undone.`;
+  overlay.classList.add('open');
+  document.getElementById('confirmYes').onclick = () => {
+    overlay.classList.remove('open');
+    showToast(`Deleting ${name}...`, 'warning');
+    setTimeout(() => window.location.href = url, 600);
+  };
+  document.getElementById('confirmNo').onclick = () => overlay.classList.remove('open');
+}
+</script>
+
+<!-- CONFIRM DIALOG -->
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" style="color:var(--rose);">⚠ Confirm Delete</div>
+    <p id="confirmMsg" style="font-size:0.8rem;color:var(--text2);margin-bottom:1.25rem;"></p>
+    <div class="modal-footer">
+      <button id="confirmNo"  class="btn btn-ghost">Cancel</button>
+      <button id="confirmYes" class="btn btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
